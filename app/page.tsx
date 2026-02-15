@@ -5,7 +5,6 @@ import { AppState, ImpulseItem } from '@/lib/types';
 import { getAppState, addItem, markAsSaved, deleteItem, isWaitingPeriodOver, updateItemStatus } from '@/lib/storage';
 import AddItemModal from '@/components/AddItemModal';
 import ItemCard from '@/components/ItemCard';
-import SavingsDisplay from '@/components/SavingsDisplay';
 
 export default function Home() {
   const [state, setState] = useState<AppState>({ items: [], totalSaved: 0 });
@@ -35,24 +34,19 @@ export default function Home() {
     setRefreshKey(prev => prev + 1);
   };
 
-  // Auto-update items that have expired
+  // Auto-update expired items
   useEffect(() => {
     const interval = setInterval(() => {
       const currentState = getAppState();
       let updated = false;
-
       currentState.items.forEach(item => {
         if (item.status === 'waiting' && isWaitingPeriodOver(item.addedAt)) {
           updateItemStatus(item.id, 'ready');
           updated = true;
         }
       });
-
-      if (updated) {
-        setRefreshKey(prev => prev + 1);
-      }
-    }, 5000); // Check every 5 seconds
-
+      if (updated) setRefreshKey(prev => prev + 1);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -60,97 +54,83 @@ export default function Home() {
   const savedItems = state.items.filter(item => item.status === 'saved');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        
         {/* Header */}
-        <header className="text-center mb-12">
-          <div className="inline-block mb-4">
-            <div className="text-5xl mb-2">💸</div>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Impulse Buy Blocker
+        <div className="text-center mb-10">
+          <div className="text-5xl mb-3">🛒</div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            48-Hour Rule
           </h1>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Wait 48 hours before buying. Your wallet will thank you.
+          <p className="text-gray-600">
+            Wait before you buy. Save money, avoid regret.
           </p>
-        </header>
+        </div>
 
-        {/* Savings Display */}
-        <SavingsDisplay 
-          totalSaved={state.totalSaved} 
-          itemsSaved={savedItems.length} 
-        />
+        {/* Savings Card */}
+        {state.totalSaved > 0 && (
+          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-8 mb-10 text-white text-center shadow-lg">
+            <p className="text-sm font-medium opacity-90 mb-1">Money Saved</p>
+            <p className="text-6xl font-bold mb-2">${state.totalSaved.toFixed(2)}</p>
+            <p className="opacity-90">{savedItems.length} items avoided</p>
+          </div>
+        )}
 
-        {/* Sections */}
-        <div className="space-y-12 mt-12">
-          {/* Waiting Period Section */}
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <h2 className="text-3xl font-bold text-gray-800">
-                Waiting Period
-              </h2>
-              <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
-                {waitingItems.length}
-              </span>
+        {/* Waiting Period */}
+        <div className="mb-10">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Waiting Period ({waitingItems.length})
+          </h2>
+          {waitingItems.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+              <div className="text-6xl mb-3">📦</div>
+              <p className="text-gray-500">No items waiting</p>
+              <p className="text-sm text-gray-400 mt-1">Click + to add something</p>
             </div>
-            {waitingItems.length === 0 ? (
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 p-12 text-center">
-                <div className="text-6xl mb-4">🛍️</div>
-                <p className="text-gray-500 text-lg">
-                  No items waiting. Add something you want to buy!
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {waitingItems.map(item => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    onMarkSaved={handleMarkSaved}
-                    onBuyIt={handleBuyIt}
-                    onRefresh={handleRefresh}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Saved Section */}
-          {savedItems.length > 0 && (
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-3xl font-bold text-gray-800">
-                  Money Saved
-                </h2>
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                  {savedItems.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {savedItems.map(item => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    onMarkSaved={handleMarkSaved}
-                    onBuyIt={handleBuyIt}
-                    onRefresh={handleRefresh}
-                  />
-                ))}
-              </div>
-            </section>
+          ) : (
+            <div className="grid gap-4">
+              {waitingItems.map(item => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onMarkSaved={handleMarkSaved}
+                  onBuyIt={handleBuyIt}
+                  onRefresh={handleRefresh}
+                />
+              ))}
+            </div>
           )}
         </div>
 
-        {/* Floating Add Button */}
+        {/* Saved Items */}
+        {savedItems.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Saved ({savedItems.length})
+            </h2>
+            <div className="grid gap-4">
+              {savedItems.map(item => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onMarkSaved={handleMarkSaved}
+                  onBuyIt={handleBuyIt}
+                  onRefresh={handleRefresh}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add Button */}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="fixed bottom-8 right-8 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full w-16 h-16 shadow-2xl flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95"
-          aria-label="Add new item"
+          className="fixed bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center text-3xl transition-all active:scale-90"
         >
           +
         </button>
 
-        {/* Add Item Modal */}
         <AddItemModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
